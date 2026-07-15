@@ -19,7 +19,7 @@ struct PortLeashCLI: ParsableCommand {
         let url = URL(string: "http://127.0.0.1:4848/status")!
         if command == "find"
         {
-            print("Finding task for port \(port)")
+            print("Finding task for port \(port ?? 0)")
         }
         let task = URLSession.shared.dataTask(with: url) { data, response, error in
             if let error = error {
