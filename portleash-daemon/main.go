@@ -22,16 +22,21 @@ func portToPID(port int) int {
 	cmd.Stdout = &out
 	_ = cmd.Run()
 
-	resultCount := 0
 	lines := strings.Split(out.String(), "\n")
 	if len(lines) > 1 {
 		for _, line := range lines {
-			resultCount++
-			print(line)
+			fields := strings.Fields(line)
+			PIDstr := fields[len(fields)-1]
+			println(PIDstr)
+			PID, PIDerr := strconv.Atoi(PIDstr)
+			if PIDerr != nil {
+				return 0
+			}
+			return PID
 		}
 	}
 
-	return resultCount
+	return 0
 }
 
 func handleStatus(writer http.ResponseWriter, request *http.Request) {
