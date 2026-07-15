@@ -13,7 +13,7 @@ type PortResponse struct {
 }
 
 func handleStatus(writer http.ResponseWriter, request *http.Request) {
-	response := PortResponse{Port: 4848, PID: 12140, Name: "portleash.exe"}
+	response := PortResponse{Port: 4848, PID: 12140, Name: "portleash-daemon.exe"}
 	writer.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(writer).Encode(response)
 }
