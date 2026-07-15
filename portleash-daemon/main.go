@@ -1,16 +1,37 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os/exec"
 	"strconv"
+	"strings"
 )
 
 type PortResponse struct {
 	Port int    `json:"port"`
 	PID  int    `json:"pid"`
 	Name string `json:"name"`
+}
+
+func portToPID(port int) int {
+	cmd := exec.Command("cmd", "/c", fmt.Sprintf("netstat -ano | findstr :%d", port))
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	_ = cmd.Run()
+
+	resultCount := 0
+	lines := strings.Split(out.String(), "\n")
+	if len(lines) > 1 {
+		for _, line := range lines {
+			resultCount++
+			print(line)
+		}
+	}
+
+	return resultCount
 }
 
 func handleStatus(writer http.ResponseWriter, request *http.Request) {
@@ -26,9 +47,13 @@ func handleStatus(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	response := PortResponse{Port: portInt, PID: 12140, Name: "portleash-daemon.exe"}
-	writer.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(writer).Encode(response)
+	found := portToPID(portInt)
+
+	if found >= 1 {
+		response := PortResponse{Port: portInt, PID: 12140, Name: "portleash-daemon.exe"}
+		writer.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(writer).Encode(response)
+	}
 }
 
 func main() {
