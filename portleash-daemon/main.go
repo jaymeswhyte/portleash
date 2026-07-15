@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 )
 
 type PortResponse struct {
@@ -13,7 +14,19 @@ type PortResponse struct {
 }
 
 func handleStatus(writer http.ResponseWriter, request *http.Request) {
-	response := PortResponse{Port: 4848, PID: 12140, Name: "portleash-daemon.exe"}
+	portStr := request.URL.Query().Get("port")
+	if portStr == "" {
+		http.Error(writer, `{"error": "Missing 'port' parameter"}`, http.StatusBadRequest)
+		return
+	}
+
+	portInt, error := strconv.Atoi(portStr)
+	if error != nil {
+		http.Error(writer, `{"error": "Invalid 'port' parameter"}`, http.StatusBadRequest)
+		return
+	}
+
+	response := PortResponse{Port: portInt, PID: 12140, Name: "portleash-daemon.exe"}
 	writer.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(writer).Encode(response)
 }
