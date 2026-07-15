@@ -18,7 +18,7 @@ struct PortLeashCLI: ParsableCommand {
 
         if command == "find"
         {
-            print("Finding task for port \(port!)")
+            print("Finding task for port \(port)")
         }
 
         let urlString = "http://127.0.0.1:4848/status?port=\(port)"
