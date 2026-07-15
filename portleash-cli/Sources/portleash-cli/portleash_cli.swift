@@ -16,11 +16,14 @@ struct PortLeashCLI: ParsableCommand {
     func run() throws {
         print("Connecting to PortLeash Daemon...")
 
-        let url = URL(string: "http://127.0.0.1:4848/status")!
         if command == "find"
         {
             print("Finding task for port \(port!)")
         }
+
+        let urlString = "http://127.0.0.1:4848/status?port=\(port)"
+        guard let url = URL(string: urlString) else {return}
+
         let task = URLSession.shared.dataTask(with: url) { data, response, error in
             if let error = error {
                 print("Error connecting to daemon: \(error.localizedDescription)")
