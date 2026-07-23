@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,32 +12,62 @@ import (
 )
 
 type PortResponse struct {
-	Port int    `json:"port"`
-	PID  int    `json:"pid"`
-	Name string `json:"name"`
+	PID         int    `json:"pid"`
+	ImageName   string `json:"imageName"`
+	SessionName string `json:"sessionName"`
 }
 
-func portToPID(port int) int {
+func portToPID(port int) []int {
 	cmd := exec.Command("cmd", "/c", fmt.Sprintf("netstat -ano | findstr :%d", port))
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	_ = cmd.Run()
+	var PIDs []int
 
 	lines := strings.Split(out.String(), "\n")
 	if len(lines) > 1 {
 		for _, line := range lines {
 			fields := strings.Fields(line)
 			PIDstr := fields[len(fields)-1]
-			println(PIDstr)
 			PID, PIDerr := strconv.Atoi(PIDstr)
 			if PIDerr != nil {
-				return 0
+				continue
 			}
-			return PID
+			PIDs = append(PIDs, PID)
 		}
 	}
 
-	return 0
+	return PIDs
+}
+
+func tasksFromPIDs(PIDs []int) []PortResponse {
+	var tasks []PortResponse
+
+	for i := 0; i < len(PIDs); i++ {
+		pid := PIDs[i]
+		cmd := exec.Command("cmd", "/c", fmt.Sprintf("tasklist /FO CSV | findstr :%d", pid))
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		_ = cmd.Run()
+
+		lines := strings.Split(out.String(), "\n")
+		if len(lines) > 1 {
+			for _, line := range lines {
+				var task PortResponse
+				reader := csv.NewReader(strings.NewReader(line))
+				fields, readError := reader.Read()
+				if readError != nil {
+					continue
+				}
+				task.PID = pid
+				task.ImageName = fields[0]
+				task.SessionName = fields[2]
+				tasks = append(tasks, task)
+			}
+		}
+	}
+
+	return tasks
 }
 
 func handleStatus(writer http.ResponseWriter, request *http.Request) {
@@ -46,19 +77,22 @@ func handleStatus(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	portInt, error := strconv.Atoi(portStr)
-	if error != nil {
+	portInt, portError := strconv.Atoi(portStr)
+	if portError != nil {
 		http.Error(writer, `{"error": "Invalid 'port' parameter"}`, http.StatusBadRequest)
 		return
 	}
 
-	found := portToPID(portInt)
-
-	if found >= 1 {
-		response := PortResponse{Port: portInt, PID: 12140, Name: "portleash-daemon.exe"}
-		writer.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(writer).Encode(response)
+	foundPIDs := portToPID(portInt)
+	writer.Header().Set("Content-Type", "application/json")
+	returnTasks := []PortResponse{}
+	if len(foundPIDs) >= 1 {
+		tasks := tasksFromPIDs(foundPIDs)
+		if len(tasks) >= 1 {
+			returnTasks = tasks
+		}
 	}
+	json.NewEncoder(writer).Encode(returnTasks)
 }
 
 func main() {
